@@ -1,0 +1,105 @@
+const pool = require('../config/db');
+
+class Student {
+  // Create the students table (if it doesn't exist)
+  static async createTable() {
+    const query = `
+      CREATE TABLE IF NOT EXISTS students (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        otp VARCHAR(6),
+        otp_expiry TIMESTAMP,
+        is_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    try {
+      await pool.query(query);
+      console.log('✓ Students table created/verified');
+    } catch (err) {
+      console.error('Error creating students table:', err);
+    }
+  }
+
+  // Register a new student (store with OTP)
+  static async register(name, email, hashedPassword, otp, otpExpiry) {
+    const query = `
+      INSERT INTO students (name, email, password, otp, otp_expiry, is_verified)
+      VALUES ($1, $2, $3, $4, $5, FALSE)
+      RETURNING id, name, email, is_verified
+    `;
+    try {
+      const result = await pool.query(query, [name, email, hashedPassword, otp, otpExpiry]);
+      return result.rows[0];
+    } catch (err) {
+      if (err.code === '23505') { // Unique constraint violation
+        throw new Error('Email already registered');
+      }
+      throw err;
+    }
+  }
+
+  // Find student by email
+  static async findByEmail(email) {
+    const query = 'SELECT * FROM students WHERE email = $1';
+    const result = await pool.query(query, [email]);
+    return result.rows[0];
+  }
+
+  // Find student by ID
+  static async findById(id) {
+    const query = 'SELECT * FROM students WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    return result.rows[0];
+  }
+
+  // Verify OTP and mark student as verified
+  static async verifyOTP(email, otp) {
+    const query = `
+      UPDATE students
+      SET is_verified = TRUE, otp = NULL, otp_expiry = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE email = $1 AND otp = $2 AND otp_expiry > CURRENT_TIMESTAMP
+      RETURNING id, name, email, is_verified
+    `;
+    try {
+      const result = await pool.query(query, [email, otp]);
+      if (result.rows.length === 0) {
+        throw new Error('Invalid or expired OTP');
+      }
+      return result.rows[0];
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Resend OTP (update OTP and expiry)
+  static async resendOTP(email, newOtp, newOtpExpiry) {
+    const query = `
+      UPDATE students
+      SET otp = $1, otp_expiry = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE email = $3
+      RETURNING id, name, email, is_verified
+    `;
+    try {
+      const result = await pool.query(query, [newOtp, newOtpExpiry, email]);
+      if (result.rows.length === 0) {
+        throw new Error('Student not found');
+      }
+      return result.rows[0];
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Check if email exists
+  static async emailExists(email) {
+    const query = 'SELECT id FROM students WHERE email = $1';
+    const result = await pool.query(query, [email]);
+    return result.rows.length > 0;
+  }
+}
+
+module.exports = Student;
