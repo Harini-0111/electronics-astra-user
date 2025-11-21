@@ -1,5 +1,4 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 require('dotenv').config();
@@ -10,12 +9,11 @@ const ensureMongoConnection = async () => {
   const uri = process.env.MONGO_URI;
   if (!uri) throw new Error('MONGO_URI not defined in .env');
   await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+    // current driver options are applied by default
   });
 };
 
-// POST /login
+// POST /login - session-based
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -40,22 +38,16 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Generate JWT (24 hours)
-    const token = jwt.sign(
-      { id: user._id.toString(), email: user.email, name: user.name },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Create server-side session (store minimal info)
+    req.session.user = { id: user._id.toString(), email: user.email, name: user.name };
 
-    // Return user details (excluding password) + token
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: 'Login successful, session created',
       data: {
         id: user._id,
         name: user.name,
         email: user.email,
-        token,
       },
     });
   } catch (err) {

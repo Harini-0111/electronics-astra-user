@@ -7,6 +7,7 @@ const pool = require('./config/db');
 const Student = require('./models/Student');
 const authRoutes = require('./routes/auth');
 const loginRoute = require('./routes/login');
+const session = require('express-session');
 
 const app = express();
 
@@ -17,6 +18,21 @@ app.use(cookieParser());
 app.use(cors({
   origin: 'http://localhost:3000', // Update with your frontend URL
   credentials: true,
+}));
+
+// Session middleware - register before routes
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.JWT_SECRET || 'change_this_secret';
+app.use(session({
+  name: 'connect.sid',
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  },
 }));
 
 // Initialize database
@@ -41,6 +57,9 @@ initializeDatabase();
 app.use('/api/auth', authRoutes);
 // Login route (MongoDB + JWT)
 app.use('/login', loginRoute);
+// Session routes (logout, status)
+const sessionRoutes = require('./routes/session');
+app.use('/', sessionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
