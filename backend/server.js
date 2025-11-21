@@ -6,6 +6,7 @@ require('dotenv').config();
 const pool = require('./config/db');
 const Student = require('./models/Student');
 const authRoutes = require('./routes/auth');
+const loginRoute = require('./routes/login');
 
 const app = express();
 
@@ -38,6 +39,8 @@ initializeDatabase();
 
 // Routes
 app.use('/api/auth', authRoutes);
+// Login route (MongoDB + JWT)
+app.use('/login', loginRoute);
 
 // Health check
 app.get('/api/health', (req, res) => {
