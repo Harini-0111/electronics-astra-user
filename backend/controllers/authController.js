@@ -223,21 +223,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: student.id, email: student.email, name: student.name },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // Create server-side session (store minimal info)
+    req.session.user = { id: student.id, email: student.email, name: student.name };
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful!',
+      message: 'Login successful, session created',
       data: {
         id: student.id,
         name: student.name,
         email: student.email,
-        token,
       },
     });
   } catch (err) {
