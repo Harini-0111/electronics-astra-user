@@ -7,6 +7,7 @@ const pool = require('./config/db');
 const Student = require('./models/Student');
 const authRoutes = require('./routes/auth');
 const loginRoute = require('./routes/login');
+const userRoutes = require('./routes/userRoutes');
 const session = require('express-session');
 
 const app = express();
@@ -57,9 +58,8 @@ initializeDatabase();
 app.use('/api/auth', authRoutes);
 // Login route (MongoDB + JWT)
 app.use('/login', loginRoute);
-// Session routes (logout, status)
-const sessionRoutes = require('./routes/session');
-app.use('/', sessionRoutes);
+// User profile and session routes
+app.use('/', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -9,6 +9,9 @@ class Student {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        address VARCHAR(500),
+        date_of_birth DATE,
         otp VARCHAR(6),
         otp_expiry TIMESTAMP,
         is_verified BOOLEAN DEFAULT FALSE,
@@ -99,6 +102,58 @@ class Student {
     const query = 'SELECT id FROM students WHERE email = $1';
     const result = await pool.query(query, [email]);
     return result.rows.length > 0;
+  }
+
+  // Get profile (all fields)
+  static async getProfile(id) {
+    const query = `
+      SELECT id, name, email, phone, address, date_of_birth, is_verified, created_at, updated_at
+      FROM students
+      WHERE id = $1
+    `;
+    const result = await pool.query(query, [id]);
+    if (result.rows.length === 0) {
+      throw new Error('Student not found');
+    }
+    return result.rows[0];
+  }
+
+  // Update profile (name, phone, address, date_of_birth)
+  static async updateProfile(id, updateData) {
+    const { name, phone, address, date_of_birth } = updateData;
+    const query = `
+      UPDATE students
+      SET name = COALESCE($1, name),
+          phone = COALESCE($2, phone),
+          address = COALESCE($3, address),
+          date_of_birth = COALESCE($4, date_of_birth),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING id, name, email, phone, address, date_of_birth, is_verified, created_at, updated_at
+    `;
+    try {
+      const result = await pool.query(query, [name, phone, address, date_of_birth, id]);
+      if (result.rows.length === 0) {
+        throw new Error('Student not found');
+      }
+      return result.rows[0];
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Delete profile (account deletion)
+  static async deleteProfile(id) {
+    const query = 'DELETE FROM students WHERE id = $1 RETURNING id, email';
+    try {
+      const result = await pool.query(query, [id]);
+      if (result.rows.length === 0) {
+        throw new Error('Student not found');
+      }
+      return result.rows[0];
+    } catch (err) {
+      throw err;
+    }
   }
 }
 
