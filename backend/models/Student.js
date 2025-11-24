@@ -27,15 +27,15 @@ class Student {
     }
   }
 
-  // Register a new student (store with OTP)
-  static async register(name, email, hashedPassword, otp, otpExpiry) {
+  // Register a new student (store with OTP) — supports optional phone/address/date_of_birth
+  static async register(name, email, hashedPassword, otp, otpExpiry, phone = null, address = null, date_of_birth = null) {
     const query = `
-      INSERT INTO students (name, email, password, otp, otp_expiry, is_verified)
-      VALUES ($1, $2, $3, $4, $5, FALSE)
-      RETURNING id, name, email, is_verified
+      INSERT INTO students (name, email, password, phone, address, date_of_birth, otp, otp_expiry, is_verified)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE)
+      RETURNING id, name, email, phone, address, date_of_birth, is_verified
     `;
     try {
-      const result = await pool.query(query, [name, email, hashedPassword, otp, otpExpiry]);
+      const result = await pool.query(query, [name, email, hashedPassword, phone, address, date_of_birth, otp, otpExpiry]);
       return result.rows[0];
     } catch (err) {
       if (err.code === '23505') { // Unique constraint violation

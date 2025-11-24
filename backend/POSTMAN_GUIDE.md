@@ -23,7 +23,10 @@ Notes about sessions
   {
     "name": "Test User",
     "email": "you+test@example.com",
-    "password": "TestPass123"
+    "password": "TestPass123",
+    "phone": "9876543210",
+    "address": "123 Example St",
+    "date_of_birth": "1990-01-01"  // ISO date (YYYY-MM-DD)
   }
 - Expected: 201 success with message "Registration successful! Check your email for OTP."; server log will show `✓ OTP sent to ...` if email is configured.
 
