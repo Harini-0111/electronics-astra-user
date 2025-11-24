@@ -155,6 +155,25 @@ class Student {
       throw err;
     }
   }
+
+  // Change password (update password by student ID)
+  static async changePassword(id, newHashedPassword) {
+    const query = `
+      UPDATE students
+      SET password = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id, email
+    `;
+    try {
+      const result = await pool.query(query, [newHashedPassword, id]);
+      if (result.rows.length === 0) {
+        throw new Error('Student not found');
+      }
+      return result.rows[0];
+    } catch (err) {
+      throw err;
+    }
+  }
 }
 
 module.exports = Student;

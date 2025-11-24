@@ -39,4 +39,12 @@ router.post('/logout', userController.logout);
  */
 router.get('/session-status', userController.getSessionStatus);
 
+/**
+ * @route   PUT /change-password
+ * @desc    Change password for logged-in user
+ * @access  Private
+ * @body    { currentPassword, newPassword }
+ */
+router.put('/change-password', userController.changePassword);
+
 module.exports = router;
