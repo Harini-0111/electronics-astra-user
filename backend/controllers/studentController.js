@@ -14,9 +14,9 @@ const requireLogin = (req, res, next) => {
 };
 
 /**
- * Get Profile - Retrieve logged-in user's details
+ * Get Profile - Retrieve logged-in student's details
  * @route   GET /profile
- * @access  Private (requires session)
+ * @access  Private
  */
 exports.getProfile = [
   requireLogin,
@@ -43,9 +43,9 @@ exports.getProfile = [
 ];
 
 /**
- * Update Profile - Allow user to update their profile information
+ * Update Profile - Allow student to update their profile information
  * @route   PUT /profile
- * @access  Private (requires session)
+ * @access  Private
  * @body    { name, phone, address, date_of_birth }
  */
 exports.updateProfile = [
@@ -84,9 +84,9 @@ exports.updateProfile = [
 ];
 
 /**
- * Delete Account - Permanently delete user account and session
+ * Delete Account - Permanently delete student account and session
  * @route   DELETE /profile
- * @access  Private (requires session)
+ * @access  Private
  */
 exports.deleteAccount = [
   requireLogin,
@@ -121,59 +121,3 @@ exports.deleteAccount = [
     }
   },
 ];
-
-/**
- * Logout - Destroy session
- * @route   POST /logout
- * @access  Private (requires session)
- */
-exports.logout = [
-  requireLogin,
-  (req, res) => {
-    try {
-      req.session.destroy((err) => {
-        if (err) {
-          console.error('Session destroy error:', err);
-          return res.status(500).json({
-            success: false,
-            message: 'Failed to logout',
-          });
-        }
-
-        // Clear session cookie
-        res.clearCookie('connect.sid');
-
-        return res.status(200).json({
-          success: true,
-          message: 'Logout successful',
-        });
-      });
-    } catch (err) {
-      console.error('Logout error:', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to logout',
-      });
-    }
-  },
-];
-
-/**
- * Get Session Status - Check if user is logged in
- * @route   GET /session-status
- * @access  Public
- */
-exports.getSessionStatus = (req, res) => {
-  if (req.session && req.session.user) {
-    return res.status(200).json({
-      success: true,
-      loggedIn: true,
-      user: req.session.user,
-    });
-  }
-
-  return res.status(200).json({
-    success: true,
-    loggedIn: false,
-  });
-};
