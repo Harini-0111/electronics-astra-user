@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const crypto = require('crypto');
 
 class Student {
   // Create the students table (if it doesn't exist)
@@ -6,6 +7,7 @@ class Student {
     const query = `
       CREATE TABLE IF NOT EXISTS students (
         id SERIAL PRIMARY KEY,
+        userid INTEGER UNIQUE,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -22,23 +24,51 @@ class Student {
     try {
       await pool.query(query);
       console.log('✓ Students table created/verified');
+      // Ensure userid column exists (for older installations where table existed)
+      try {
+        await pool.query(`ALTER TABLE students ADD COLUMN IF NOT EXISTS userid INTEGER UNIQUE`);
+      } catch (err) {
+        // If ALTER fails, log but continue
+        console.warn('Warning: could not ensure userid column exists:', err && err.message ? err.message : err);
+      }
     } catch (err) {
       console.error('Error creating students table:', err);
     }
   }
 
-  // Register a new student (store with OTP)
-  static async register(name, email, hashedPassword, otp, otpExpiry) {
+  // Register a new student (store with OTP) — supports optional phone/address/date_of_birth
+  static async register(name, email, hashedPassword, otp, otpExpiry, phone = null, address = null, date_of_birth = null) {
+    // Generate a unique 5-digit numeric userid using secure random
+    let userid;
+    const maxAttempts = 10;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // crypto.randomInt is secure; generate between 10000 and 99999 inclusive
+      userid = crypto.randomInt(10000, 100000);
+      // Check uniqueness
+      const exists = await pool.query('SELECT id FROM students WHERE userid = $1', [userid]);
+      if (exists.rows.length === 0) break;
+      userid = null;
+    }
+    if (!userid) {
+      throw new Error('Failed to generate unique userid, try again');
+    }
+
     const query = `
-      INSERT INTO students (name, email, password, otp, otp_expiry, is_verified)
-      VALUES ($1, $2, $3, $4, $5, FALSE)
-      RETURNING id, name, email, is_verified
+      INSERT INTO students (userid, name, email, password, phone, address, date_of_birth, otp, otp_expiry, is_verified)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
+      RETURNING id, userid, name, email, phone, address, date_of_birth, is_verified
     `;
     try {
-      const result = await pool.query(query, [name, email, hashedPassword, otp, otpExpiry]);
+      const result = await pool.query(query, [userid, name, email, hashedPassword, phone, address, date_of_birth, otp, otpExpiry]);
       return result.rows[0];
     } catch (err) {
+      // Handle unique constraints (email or userid) gracefully
       if (err.code === '23505') { // Unique constraint violation
+        // Could be email or userid; if userid conflict, retry once more
+        if (err.detail && err.detail.includes('userid')) {
+          // Try one more time recursively (limited)
+          return await Student.register(name, email, hashedPassword, otp, otpExpiry, phone, address, date_of_birth);
+        }
         throw new Error('Email already registered');
       }
       throw err;
@@ -49,6 +79,13 @@ class Student {
   static async findByEmail(email) {
     const query = 'SELECT * FROM students WHERE email = $1';
     const result = await pool.query(query, [email]);
+    return result.rows[0];
+  }
+
+  // Find student by userid (5-digit numeric code)
+  static async findByUserId(userid) {
+    const query = 'SELECT * FROM students WHERE userid = $1';
+    const result = await pool.query(query, [userid]);
     return result.rows[0];
   }
 
@@ -107,7 +144,7 @@ class Student {
   // Get profile (all fields)
   static async getProfile(id) {
     const query = `
-      SELECT id, name, email, phone, address, date_of_birth, is_verified, created_at, updated_at
+      SELECT id, userid, name, email, phone, address, date_of_birth, is_verified, created_at, updated_at
       FROM students
       WHERE id = $1
     `;

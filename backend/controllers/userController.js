@@ -14,110 +14,65 @@ const requireLogin = (req, res, next) => {
 };
 
 /**
- * Get Profile - Retrieve logged-in user's details
- * @route   GET /profile
- * @access  Private (requires session)
+ * POST /add-friend
+ * Body: { targetUserId }
  */
-exports.getProfile = [
+exports.addFriend = [
   requireLogin,
   async (req, res) => {
     try {
-      const userId = req.session.user.id;
+      const { targetUserId } = req.body;
 
-      // Fetch student profile from database
-      const profile = await Student.getProfile(userId);
-
-      return res.status(200).json({
-        success: true,
-        message: 'Profile retrieved successfully',
-        data: profile,
-      });
-    } catch (err) {
-      console.error('Get Profile error:', err);
-      return res.status(500).json({
-        success: false,
-        message: err.message || 'Failed to retrieve profile',
-      });
-    }
-  },
-];
-
-/**
- * Update Profile - Allow user to update their profile information
- * @route   PUT /profile
- * @access  Private (requires session)
- * @body    { name, phone, address, date_of_birth }
- */
-exports.updateProfile = [
-  requireLogin,
-  async (req, res) => {
-    try {
-      const userId = req.session.user.id;
-      const { name, phone, address, date_of_birth } = req.body;
-
-      // Update profile in database (only provided fields are updated)
-      const updatedProfile = await Student.updateProfile(userId, {
-        name,
-        phone,
-        address,
-        date_of_birth,
-      });
-
-      // Update session user info
-      if (name) {
-        req.session.user.name = name;
+      if (!targetUserId) {
+        return res.status(400).json({ success: false, message: 'Please provide targetUserId' });
       }
 
+      // Validate that targetUserId exists (userid field)
+      const target = await Student.findByUserId(targetUserId);
+      if (!target) {
+        return res.status(404).json({ success: false, message: 'Target user not found' });
+      }
+
+      // Placeholder: actual friend request persistence not implemented yet
       return res.status(200).json({
         success: true,
-        message: 'Profile updated successfully',
-        data: updatedProfile,
+        message: `Friend request sent to ${targetUserId}`,
       });
     } catch (err) {
-      console.error('Update Profile error:', err);
-      return res.status(500).json({
-        success: false,
-        message: err.message || 'Failed to update profile',
-      });
+      console.error('Add Friend error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to send friend request' });
     }
   },
 ];
 
 /**
- * Delete Account - Permanently delete user account and session
- * @route   DELETE /profile
- * @access  Private (requires session)
+ * POST /accept-friend
+ * Body: { targetUserId }
  */
-exports.deleteAccount = [
+exports.acceptFriend = [
   requireLogin,
   async (req, res) => {
     try {
-      const userId = req.session.user.id;
+      const { targetUserId } = req.body;
 
-      // Delete student from database
-      const deleted = await Student.deleteProfile(userId);
+      if (!targetUserId) {
+        return res.status(400).json({ success: false, message: 'Please provide targetUserId' });
+      }
 
-      // Destroy session after successful deletion
-      req.session.destroy((err) => {
-        if (err) {
-          console.error('Session destroy error:', err);
-        }
-      });
+      // Validate that targetUserId exists (userid field)
+      const target = await Student.findByUserId(targetUserId);
+      if (!target) {
+        return res.status(404).json({ success: false, message: 'Target user not found' });
+      }
 
+      // Placeholder: acceptance logic to be implemented later
       return res.status(200).json({
         success: true,
-        message: 'Account deleted successfully and session destroyed',
-        data: {
-          deletedUserId: deleted.id,
-          deletedEmail: deleted.email,
-        },
+        message: `Friend request from ${targetUserId} accepted`,
       });
     } catch (err) {
-      console.error('Delete Account error:', err);
-      return res.status(500).json({
-        success: false,
-        message: err.message || 'Failed to delete account',
-      });
+      console.error('Accept Friend error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to accept friend request' });
     }
   },
 ];

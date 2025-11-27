@@ -62,6 +62,7 @@ The server will run on `http://localhost:5001`
 ```sql
 CREATE TABLE students (
   id SERIAL PRIMARY KEY,
+  userid INTEGER UNIQUE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
@@ -168,9 +169,9 @@ CREATE TABLE students (
   "message": "Login successful!",
   "data": {
     "id": 1,
+    "userid": 12345,
     "name": "John Doe",
-    "email": "john@example.com",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "email": "john@example.com"
   }
 }
 ```
@@ -239,18 +240,18 @@ CREATE TABLE students (
 
 ```
 1. User enters name, email, password
-   ↓
+  ↓
 2. System sends OTP to email
-   ↓
+  ↓
 3. User receives OTP in email inbox
-   ↓
+  ↓
 4. User enters OTP to verify email
-   ↓
+  ↓
 5. Email verified - User redirected to login page
-   ↓
+  ↓
 6. User logs in with email & password
-   ↓
-7. JWT token issued for authenticated requests
+  ↓
+7. Server-side session created. `req.session.user` includes `id`, `email`, `name`, and the new 5-digit numeric `userid`.
 ```
 
 ---
@@ -331,6 +332,29 @@ curl -X POST http://localhost:5001/api/auth/login \
 ```
 
 ---
+
+### New User Routes (Friend placeholders)
+
+These endpoints are lightweight placeholders that validate the session and verify the target user's `userid` exists. Relationship persistence is not implemented yet.
+
+1. Send Friend Request
+   - POST `/add-friend`
+   - Body (JSON): `{ "targetUserId": 12345 }` (the 5-digit `userid` of the target)
+   - Requires the session cookie from a successful login.
+   - Response (Success):
+     ```json
+     { "success": true, "message": "Friend request sent to 12345" }
+     ```
+
+2. Accept Friend Request
+   - POST `/accept-friend`
+   - Body (JSON): `{ "targetUserId": 12345 }`
+   - Requires the session cookie from a successful login.
+   - Response (Success):
+     ```json
+     { "success": true, "message": "Friend request from 12345 accepted" }
+     ```
+
 
 ## Database Connection
 

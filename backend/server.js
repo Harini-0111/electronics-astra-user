@@ -5,8 +5,10 @@ require('dotenv').config();
 
 const pool = require('./config/db');
 const Student = require('./models/Student');
+const dbStatus = require('./utils/dbStatus');
 const authRoutes = require('./routes/auth');
-const loginRoute = require('./routes/login');
+const sessionRoutes = require('./routes/session');
+const studentRoutes = require('./routes/studentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const session = require('express-session');
 
@@ -42,12 +44,17 @@ const initializeDatabase = async () => {
     // Test connection
     const result = await pool.query('SELECT NOW()');
     console.log('✓ PostgreSQL Database connected');
-    
+    dbStatus.setConnected(true);
+
     // Create tables
     await Student.createTable();
   } catch (err) {
+    // Log the error but don't terminate the process. Endpoints that require DB
+    // will still fail until DB is available, but keeping the server running is
+    // helpful during development so the app can respond with helpful errors.
     console.error('✗ Database connection error:', err);
-    process.exit(1);
+    dbStatus.setConnected(false);
+    console.error('Continuing without DB connection — fix Postgres credentials or start Postgres.');
   }
 };
 
@@ -56,9 +63,11 @@ initializeDatabase();
 
 // Routes
 app.use('/api/auth', authRoutes);
-// Login route (MongoDB + JWT)
-app.use('/login', loginRoute);
-// User profile and session routes
+// Session routes (logout, status)
+app.use('/', sessionRoutes);
+// Student profile routes
+app.use('/', studentRoutes);
+// User routes (friends, user-level actions)
 app.use('/', userRoutes);
 
 // Health check

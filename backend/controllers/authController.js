@@ -32,19 +32,27 @@ const sendOTPEmail = async (email, otp, name) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log('✓ OTP sent to', email);
-    return true;
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log('✓ OTP sent to', email);
+      return true;
+    } catch (err) {
+      // Do not throw — store OTP in DB and allow registration to succeed.
+      console.error('Warning: failed to send OTP email:', err && err.message ? err.message : err);
+      console.error('OTP was stored in DB; use dev helper to read it or configure SMTP.');
+      return false;
+    }
   } catch (err) {
-    console.error('Error sending OTP email:', err);
-    throw new Error('Failed to send OTP email');
+    // Shouldn't reach here, but log defensively
+    console.error('Unexpected error preparing OTP email:', err);
+    return false;
   }
 };
 
 // Register a new student
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone, address, date_of_birth } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -71,8 +79,8 @@ exports.register = async (req, res) => {
     const otp = generateOTP();
     const otpExpiry = generateOTPExpiry();
 
-    // Register student with OTP
-    const student = await Student.register(name, email, hashedPassword, otp, otpExpiry);
+    // Register student with OTP (store optional profile fields)
+    const student = await Student.register(name, email, hashedPassword, otp, otpExpiry, phone || null, address || null, date_of_birth || null);
 
     // Send OTP via email
     await sendOTPEmail(email, otp, name);
@@ -84,6 +92,9 @@ exports.register = async (req, res) => {
         id: student.id,
         name: student.name,
         email: student.email,
+        phone: student.phone,
+        address: student.address,
+        date_of_birth: student.date_of_birth,
         isVerified: student.is_verified,
       },
     });
@@ -223,14 +234,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Create server-side session (store minimal info)
-    req.session.user = { id: student.id, email: student.email, name: student.name };
+
+    // Create server-side session (store minimal info including userid)
+    req.session.user = { id: student.id, email: student.email, name: student.name, userid: student.userid };
 
     return res.status(200).json({
       success: true,
       message: 'Login successful, session created',
       data: {
         id: student.id,
+        userid: student.userid,
         name: student.name,
         email: student.email,
       },
