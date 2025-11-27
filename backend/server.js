@@ -9,6 +9,7 @@ const dbStatus = require('./utils/dbStatus');
 const authRoutes = require('./routes/auth');
 const sessionRoutes = require('./routes/session');
 const studentRoutes = require('./routes/studentRoutes');
+const userRoutes = require('./routes/userRoutes');
 const session = require('express-session');
 
 const app = express();
@@ -66,6 +67,8 @@ app.use('/api/auth', authRoutes);
 app.use('/', sessionRoutes);
 // Student profile routes
 app.use('/', studentRoutes);
+// User routes (friends, user-level actions)
+app.use('/', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
