@@ -234,14 +234,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Create server-side session (store minimal info)
-    req.session.user = { id: student.id, email: student.email, name: student.name };
+
+    // Create server-side session (store minimal info including userid)
+    req.session.user = { id: student.id, email: student.email, name: student.name, userid: student.userid };
 
     return res.status(200).json({
       success: true,
       message: 'Login successful, session created',
       data: {
         id: student.id,
+        userid: student.userid,
         name: student.name,
         email: student.email,
       },
