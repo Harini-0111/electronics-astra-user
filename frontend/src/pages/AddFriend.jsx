@@ -1,15 +1,19 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/axiosInstance'
 
 export default function AddFriend() {
   const [targetUserId, setTargetUserId] = useState('')
   const [message, setMessage] = useState(null)
+  const navigate = useNavigate()
 
   const submit = async (e) => {
     e.preventDefault()
     try {
-      const res = await api.post('/add-friend', { targetUserId: Number(targetUserId) })
+      const res = await api.post('/friends/request', { targetUserId: Number(targetUserId) })
       setMessage(res.data.message || 'Friend request sent')
+      // redirect to dashboard after short delay
+      setTimeout(() => navigate('/dashboard'), 900)
     } catch (err) {
       setMessage(err.response?.data?.message || err.message)
     }

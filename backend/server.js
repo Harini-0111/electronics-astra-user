@@ -7,9 +7,7 @@ const pool = require('./config/db');
 const Student = require('./models/Student');
 const dbStatus = require('./utils/dbStatus');
 const authRoutes = require('./routes/auth');
-const sessionRoutes = require('./routes/session');
 const studentRoutes = require('./routes/studentRoutes');
-const userRoutes = require('./routes/userRoutes');
 const session = require('express-session');
 
 const app = express();
@@ -63,12 +61,9 @@ initializeDatabase();
 
 // Routes
 app.use('/api/auth', authRoutes);
-// Session routes (logout, status)
-app.use('/', sessionRoutes);
-// Student profile routes
+// Student profile + session routes (logout, status, change-password)
 app.use('/', studentRoutes);
-// User routes (friends, user-level actions)
-app.use('/', userRoutes);
+// (Removed userRoutes - user/friend endpoints were deleted to keep student-only flow)
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -77,6 +72,23 @@ app.get('/api/health', (req, res) => {
     message: 'User Backend Server is running',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Debug endpoint: returns request headers, cookies and session for troubleshooting
+// Use only in development. Remove or protect in production.
+app.get('/debug-session', (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: 'Debug session info',
+      headers: req.headers,
+      cookies: req.cookies,
+      session: req.session,
+    });
+  } catch (err) {
+    console.error('Debug session error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to read session' });
+  }
 });
 
 // 404 handler

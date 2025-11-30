@@ -123,14 +123,21 @@ exports.verifyOTP = async (req, res) => {
     // Verify OTP
     const student = await Student.verifyOTP(email, otp);
 
+    // Assign userid after verification (if not already assigned)
+    let assigned = student;
+    if (!student.userid) {
+      assigned = await Student.assignUserid(student.id);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Email verified successfully! You can now login.',
       data: {
-        id: student.id,
-        name: student.name,
-        email: student.email,
-        isVerified: student.is_verified,
+        id: assigned.id,
+        userid: assigned.userid,
+        name: assigned.name,
+        email: assigned.email,
+        isVerified: true,
       },
     });
   } catch (err) {
@@ -192,6 +199,60 @@ exports.resendOTP = async (req, res) => {
       success: false,
       message: err.message || 'Failed to resend OTP',
     });
+  }
+};
+
+// Forgot password - generate OTP and email it (reuses resendOTP logic)
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Please provide email' });
+
+    const student = await Student.findByEmail(email);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const newOtp = generateOTP();
+    const newOtpExpiry = generateOTPExpiry();
+    await Student.resendOTP(email, newOtp, newOtpExpiry);
+    await sendOTPEmail(email, newOtp, student.name);
+
+    return res.status(200).json({ success: true, message: 'OTP sent to your email (if configured). Use it to reset password.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to generate OTP' });
+  }
+};
+
+// Reset password using OTP
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) return res.status(400).json({ success: false, message: 'Please provide email, otp and newPassword' });
+
+    const salt = await bcrypt.genSalt(10);
+    const newHashedPassword = await bcrypt.hash(newPassword, salt);
+
+    const updated = await Student.resetPasswordByOTP(email, otp, newHashedPassword);
+    return res.status(200).json({ success: true, message: 'Password updated successfully', data: updated });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return res.status(400).json({ success: false, message: err.message || 'Failed to reset password' });
+  }
+};
+
+// Check reset OTP (validate without changing verification)
+exports.checkResetOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ success: false, message: 'Please provide email and otp' });
+
+    const ok = await Student.checkOTP(email, otp);
+    if (!ok) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+
+    return res.status(200).json({ success: true, message: 'OTP is valid' });
+  } catch (err) {
+    console.error('Check reset OTP error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to check OTP' });
   }
 };
 

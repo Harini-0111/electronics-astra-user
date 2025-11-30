@@ -1,42 +1,52 @@
-# User Backend Registration System
+# Electronics Astra — User Backend (Student Auth)
 
-This is the user-side backend for Electronics Astra with OTP-based email verification registration system.
+This repository contains the user backend for Electronics Astra. It implements a student-focused, PostgreSQL-backed registration and authentication system with OTP-based email verification and server-side sessions.
 
-## Features
+What this project contains (current state)
+- Student-only authentication and profile storage in PostgreSQL (`students` table)
+- Endpoints: registration (with profile fields), OTP verify, resend OTP, login (server session), session status, logout, profile CRUD (GET/PUT/DELETE)
+- OTP generation and expiry (6 digits, 10 minutes)
+- Password hashing with `bcryptjs`
+- Email sending via `nodemailer` (non-fatal in dev; OTP persisted in DB)
+- Dev helper scripts: `backend/scripts/checkStudents.js`, `show-env.js`, `test-db-connection.js`
+- Server resilience improvements for DB connectivity
 
-✅ User Registration with Email Verification
-✅ OTP-based Email Verification (10-minute validity)
-✅ Secure Password Hashing (bcryptjs)
-✅ JWT Token Authentication
-✅ Resend OTP functionality
-✅ PostgreSQL Database Integration
-✅ Email notifications via Nodemailer
+Prerequisites
+- Node.js (14+ recommended)
+- PostgreSQL (running locally or accessible remotely)
+- Git
 
-## Setup Instructions
+Quick clone, install and run
+1. Clone the repository and checkout the branch used for development (we use `primary`):
 
-### 1. Install Dependencies
-
-```bash
-npm install
+```powershell
+git clone https://github.com/Harini-0111/electronics-astra-user.git
+cd electronics-astra-user
+git checkout primary
 ```
 
-### 2. Environment Variables
+2. Open the project in VS Code:
 
-The `.env` file is already configured with:
-- PostgreSQL connection details
-- JWT secret
-- MongoDB URI (if needed later)
-- Email credentials
+```powershell
+code .
+```
 
-**Make sure these values match your actual setup:**
+3. Install dependencies for the backend and start the server (from VS Code terminal):
+
+```powershell
+cd backend; npm install; npm run dev
+```
+
+Environment variables
+- Create a `backend/.env` file (this repository ignores `.env`) with the values below:
+
 ```
 PG_HOST=localhost
 PG_PORT=5432
 PG_DATABASE=electronics-astra
 PG_USER=postgres
-PG_PASSWORD=root
+PG_PASSWORD=<your-db-password>
 PORT=5001
-JWT_SECRET=your-secret-key
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 ```
@@ -62,7 +72,6 @@ The server will run on `http://localhost:5001`
 ```sql
 CREATE TABLE students (
   id SERIAL PRIMARY KEY,
-  userid INTEGER UNIQUE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
@@ -169,9 +178,9 @@ CREATE TABLE students (
   "message": "Login successful!",
   "data": {
     "id": 1,
-    "userid": 12345,
     "name": "John Doe",
-    "email": "john@example.com"
+    "email": "john@example.com",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
 ```
@@ -213,16 +222,8 @@ CREATE TABLE students (
 ### 403 - Forbidden
 ```json
 {
-  "success": false,
-  "message": "Please verify your email first"
-}
-```
-
-### 404 - Not Found
-```json
-{
-  "success": false,
-  "message": "Student not found"
+  "email": "student@example.com",
+  "otp": "<6-digit-otp>"
 }
 ```
 
@@ -240,18 +241,18 @@ CREATE TABLE students (
 
 ```
 1. User enters name, email, password
-  ↓
+   ↓
 2. System sends OTP to email
-  ↓
+   ↓
 3. User receives OTP in email inbox
-  ↓
+   ↓
 4. User enters OTP to verify email
-  ↓
+   ↓
 5. Email verified - User redirected to login page
-  ↓
+   ↓
 6. User logs in with email & password
-  ↓
-7. Server-side session created. `req.session.user` includes `id`, `email`, `name`, and the new 5-digit numeric `userid`.
+   ↓
+7. JWT token issued for authenticated requests
 ```
 
 ---
@@ -333,29 +334,6 @@ curl -X POST http://localhost:5001/api/auth/login \
 
 ---
 
-### New User Routes (Friend placeholders)
-
-These endpoints are lightweight placeholders that validate the session and verify the target user's `userid` exists. Relationship persistence is not implemented yet.
-
-1. Send Friend Request
-   - POST `/add-friend`
-   - Body (JSON): `{ "targetUserId": 12345 }` (the 5-digit `userid` of the target)
-   - Requires the session cookie from a successful login.
-   - Response (Success):
-     ```json
-     { "success": true, "message": "Friend request sent to 12345" }
-     ```
-
-2. Accept Friend Request
-   - POST `/accept-friend`
-   - Body (JSON): `{ "targetUserId": 12345 }`
-   - Requires the session cookie from a successful login.
-   - Response (Success):
-     ```json
-     { "success": true, "message": "Friend request from 12345 accepted" }
-     ```
-
-
 ## Database Connection
 
 The app automatically creates the `students` table on startup if it doesn't exist. PostgreSQL must be running and accessible with the credentials in `.env`.
@@ -363,30 +341,43 @@ The app automatically creates the `students` table on startup if it doesn't exis
 **To verify PostgreSQL is running:**
 ```bash
 psql -U postgres -d electronics-astra
+SELECT id, email, otp, otp_expiry, is_verified FROM students ORDER BY created_at DESC LIMIT 10;
 ```
 
+Helpful dev scripts
+- `node backend/scripts/show-env.js` — prints loaded env vars (debugging)
+- `node backend/scripts/test-db-connection.js` — attempts a DB connection and reports status
+- `node backend/scripts/checkStudents.js` — prints recent student rows and OTPs (dev-only)
+
+API summary (most-used endpoints)
+- POST `/api/auth/register` — register student (accepts profile fields)
+- POST `/api/auth/verify-otp` — verify OTP
+- POST `/api/auth/resend-otp` — resend OTP
+- POST `/api/auth/login` — login (creates server session)
+- GET `/api/session-status` — check session
+- POST `/api/logout` — logout
+- GET `/api/profile` — get logged-in student's profile
+- PUT `/api/profile` — update profile
+- DELETE `/api/profile` — delete account
+
+Testing checklist
+- [ ] PostgreSQL is running and `backend/.env` credentials are correct
+- [ ] `npm install` completed successfully inside `backend`
+- [ ] `npm run dev` starts the server without fatal errors
+- [ ] Registration → Verify OTP → Login flows complete in Postman
+
+What we've built so far
+- A focused, student-only authentication system backed by PostgreSQL. It supports registration (with phone/address/dob), OTP verification, server-side sessions, profile CRUD, and useful developer helpers for testing when email is unavailable.
+
+Where to go next (suggestions)
+- Add automated tests (integration tests for auth flows)
+- Add rate-limiting on OTP/resend endpoints
+- Harden session cookie settings for production
+- Add OpenAPI / Postman collection export for easier QA
+
+If you want, I can also:
+- Generate a Postman collection JSON for these requests
+- Update top-level docs (`ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`, `TESTING_GUIDE.md`) to match this README
+
 ---
-
-## Next Steps
-
-After this registration system is complete, you can:
-1. Create user profile endpoints
-2. Add product viewing/wishlist features
-3. Implement shopping cart
-4. Add order management
-5. Create payment integration
-
----
-
-## Support
-
-For issues or questions, check the logs and ensure:
-- PostgreSQL is running
-- Gmail App Password is correct (if using Gmail)
-- Port 5001 is available
-- All environment variables are set correctly
-
----
-
-**Created:** November 15, 2025
-**Backend Version:** 1.0.0
+**Last updated:** November 24, 2025

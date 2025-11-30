@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/axiosInstance'
 
 export default function ChangePassword() {
   const [form, setForm] = useState({ currentPassword: '', newPassword: '' })
   const [message, setMessage] = useState(null)
+  const navigate = useNavigate()
 
   const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -12,6 +14,8 @@ export default function ChangePassword() {
     try {
       const res = await api.put('/change-password', form)
       setMessage(res.data.message || 'Password changed')
+      // redirect to dashboard after success
+      setTimeout(() => navigate('/dashboard'), 900)
     } catch (err) {
       setMessage(err.response?.data?.message || err.message)
     }
@@ -28,6 +32,7 @@ export default function ChangePassword() {
         <input name="newPassword" type="password" value={form.newPassword} onChange={handle} required />
         <button type="submit">Change Password</button>
       </form>
+      <div style={{ marginTop: 12 }}><a href="/dashboard">Go to Dashboard</a></div>
     </div>
   )
 }

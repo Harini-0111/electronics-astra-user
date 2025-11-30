@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axiosInstance'
+import { Link } from 'react-router-dom'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -33,6 +34,9 @@ export default function Login() {
         <input name="password" value={form.password} onChange={handleChange} type="password" required />
         <button type="submit">Login</button>
       </form>
+      <div style={{marginTop:12}}>
+        <Link to="/forgot-password">Forgot password?</Link>
+      </div>
     </div>
   )
 }

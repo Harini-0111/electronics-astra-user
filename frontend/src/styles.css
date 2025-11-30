@@ -1,15 +1,80 @@
-:root{--bg:#f7f7fb;--card:#fff;--accent:#0b67ff}
-body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:var(--bg);color:#111}
-.nav{background:#111;color:#fff;padding:10px}
-.nav-inner{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
-.nav .brand{font-weight:700}
-.nav .links a{color:#ddd;margin-left:12px;text-decoration:none}
-.container{max-width:980px;margin:24px auto;padding:0 12px}
-.card{background:var(--card);padding:18px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
-.form{display:flex;flex-direction:column;gap:8px;max-width:420px}
-.form input{padding:8px;border:1px solid #ddd;border-radius:6px}
-.form button{background:var(--accent);color:#fff;padding:8px;border:0;border-radius:6px}
-.message{margin:8px 0;padding:8px;background:#fffbeb;border:1px solid #ffe7a8}
-.links{margin-top:12px;display:flex;gap:10px}
-.links a{color:var(--accent);text-decoration:none}
-.profile div{margin-bottom:6px}
+:root{--bg:#f7fbff;--card:#ffffff;--accent:#0b84ff}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:linear-gradient(180deg,#f7fbff 0%,#eef6ff 100%);color:#263238}
+.nav{background:linear-gradient(90deg,#0f172a,#0b1220);color:#fff;padding:12px 0;box-shadow:0 4px 14px rgba(2,6,23,0.12);position:relative;z-index:1300}
+.nav-inner{max-width:100%;margin:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.nav .brand{font-weight:700;font-size:18px}
+.nav .links a{color:rgba(255,255,255,0.9);margin-left:12px;text-decoration:none}
+.container{max-width:1000px;margin:24px auto;padding:0 16px}
+.card{background:var(--card);padding:22px;border-radius:12px;box-shadow:0 8px 30px rgba(15,23,42,0.06);margin-bottom:20px}
+.form label{display:block;margin-top:8px;font-weight:600}
+.form input,.form select,.form textarea{width:100%;padding:10px;margin-top:6px;box-sizing:border-box;border:1px solid #e6eef8;border-radius:8px}
+.form button{margin-top:14px;padding:10px 16px;background:var(--accent);color:white;border:0;border-radius:8px;cursor:pointer}
+.form button:hover{opacity:0.95}
+.links a{display:inline-block;margin-right:10px;margin-top:12px;color:var(--accent)}
+.message{margin-bottom:12px;padding:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px}
+.small{font-size:12px;color:#617d98}
+.requests{list-style:none;padding:0;margin:0}
+.request-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #f0f6fb}
+.profile div{margin-bottom:8px}
+.friends-list{margin-top:18px}
+
+/* Layout for dashboard */
+.dashboard-layout { display:flex; gap:20px; align-items:flex-start }
+.sidebar { width:220px; }
+.main-content { flex:1 }
+
+/* Sidebar */
+.sidebar { background: linear-gradient(180deg,#07203a,#0b2a45); border-radius:0; padding:20px 16px; color:#fff; height: calc(100vh - 72px); margin-top: -6px }
+.sidebar .sidebar-inner { height: 100%; display:flex; flex-direction:column; justify-content:flex-start }
+.side-nav { display:flex; flex-direction:column; gap:6px }
+.side-nav a { color:rgba(255,255,255,0.9); text-decoration:none; padding:8px 10px; border-radius:8px; display:flex; align-items:center; gap:10px; white-space:nowrap }
+.side-nav .side-icon { width:18px; height:18px; flex:0 0 18px }
+.sidebar .profile-blurb { display:flex; gap:12px; align-items:center; margin-bottom:10px }
+.sidebar .avatar { width:44px; height:44px; border-radius:8px; background:#0b84ff; display:flex; align-items:center; justify-content:center; font-weight:700 }
+.sidebar .name { font-weight:700 }
+.side-nav { display:flex; flex-direction:column; gap:6px }
+.side-nav a { color:rgba(255,255,255,0.9); text-decoration:none; padding:8px 10px; border-radius:8px; display:flex; align-items:center; gap:10px; white-space:nowrap }
+.side-nav .side-icon { width:18px; height:18px; flex:0 0 18px }
+.side-nav a.active, .side-nav a:hover { background: rgba(255,255,255,0.06); color:#fff }
+
+/* Dashboard grid */
+.dashboard-grid { display:grid; grid-template-columns: 1fr 320px; gap:20px }
+.profile-card .profile-header { display:flex; gap:16px; align-items:center }
+.avatar-large { width:84px; height:84px; border-radius:12px; background:linear-gradient(180deg,#0b84ff,#0b5bd8); color:white; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700 }
+.profile-body { margin-top:12px }
+
+.friends-card { padding-bottom:12px }
+.friends-grid { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px }
+.friend-tile { display:flex; gap:12px; align-items:center; padding:8px; border-radius:8px; background:#fafcff }
+.friend-avatar { width:48px; height:48px; border-radius:8px; background:#e6f0ff; display:flex; align-items:center; justify-content:center; font-weight:700 }
+
+.actions { display:flex; flex-wrap:wrap; gap:10px }
+.action { display:inline-block; padding:10px 14px; background:#0b84ff; color:white; border-radius:8px; text-decoration:none }
+
+.muted { color:#66788a }
+
+@media (max-width: 900px) {
+	.dashboard-layout { flex-direction:column }
+	.sidebar { width:100% }
+	.dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* Mobile sidebar overlay behavior */
+/* hide hamburger by default; show on small screens */
+.hamburger { display:none }
+
+@media (max-width: 900px) {
+	.sidebar { position: fixed; left: -320px; top: 72px; bottom: 16px; width: 260px; z-index: 1200; transition: left 240ms ease; }
+	body.sidebar-open .sidebar { left: 12px }
+	.main-content { opacity: 0.98 }
+	.hamburger { display:inline-block; font-size:18px; background:transparent; border:0; color:#fff; padding:6px 8px; border-radius:6px }
+}
+
+/* Dark theme overrides */
+body.dark { background: #071224; color: #e6eef8 }
+body.dark .card { background: #07182a; box-shadow: 0 8px 30px rgba(0,0,0,0.6) }
+body.dark .nav { background: linear-gradient(90deg,#041223,#062033) }
+body.dark .sidebar { background: linear-gradient(180deg,#021526,#062033) }
+body.dark .form input, body.dark .form select { background: #071228; border:1px solid rgba(255,255,255,0.06); color:#e6eef8 }
+body.dark .links a, body.dark .nav .links a { color: #cfe5ff }
+body.dark .action { background:#0b84ff }

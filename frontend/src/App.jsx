@@ -1,6 +1,7 @@
 import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
+import Sidebar from './components/Sidebar'
 import Home from './pages/Dashboard'
 import Register from './pages/Register'
 import Login from './pages/Login'
@@ -9,17 +10,24 @@ import ChangePassword from './pages/ChangePassword'
 import AddFriend from './pages/AddFriend'
 import AcceptFriend from './pages/AcceptFriend'
 import Logout from './pages/Logout'
+import ForgotPassword from './pages/ForgotPassword'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
+  const location = useLocation()
+  const hideSidebarOn = ['/login', '/register', '/forgot-password']
+  const showSidebar = !hideSidebarOn.includes(location.pathname)
   return (
     <div>
       <Nav />
-      <div className="container">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <div className="dashboard-layout">
+        {showSidebar && <Sidebar />}
+        <div className="container main-content">
+          <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           <Route
             path="/dashboard"
@@ -42,7 +50,8 @@ export default function App() {
             element={<ProtectedRoute><AcceptFriend /></ProtectedRoute>}
           />
           <Route path="/logout" element={<Logout />} />
-        </Routes>
+          </Routes>
+        </div>
       </div>
     </div>
   )
