@@ -1,0 +1,15 @@
+:root{--bg:#f7f7fb;--card:#fff;--accent:#0b67ff}
+body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:var(--bg);color:#111}
+.nav{background:#111;color:#fff;padding:10px}
+.nav-inner{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.nav .brand{font-weight:700}
+.nav .links a{color:#ddd;margin-left:12px;text-decoration:none}
+.container{max-width:980px;margin:24px auto;padding:0 12px}
+.card{background:var(--card);padding:18px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.form{display:flex;flex-direction:column;gap:8px;max-width:420px}
+.form input{padding:8px;border:1px solid #ddd;border-radius:6px}
+.form button{background:var(--accent);color:#fff;padding:8px;border:0;border-radius:6px}
+.message{margin:8px 0;padding:8px;background:#fffbeb;border:1px solid #ffe7a8}
+.links{margin-top:12px;display:flex;gap:10px}
+.links a{color:var(--accent);text-decoration:none}
+.profile div{margin-bottom:6px}
