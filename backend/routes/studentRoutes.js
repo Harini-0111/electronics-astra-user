@@ -25,4 +25,33 @@ router.put('/profile', studentController.updateProfile);
  */
 router.delete('/profile', studentController.deleteAccount);
 
+/**
+ * @route   PUT /change-password
+ * @desc    Change password for logged-in student
+ * @access  Private
+ */
+router.put('/change-password', studentController.changePassword);
+
+/**
+ * @route   POST /logout
+ * @desc    Logout and destroy session
+ * @access  Private
+ */
+router.post('/logout', studentController.logout);
+
+/**
+ * @route   GET /session-status
+ * @desc    Check if session is active
+ * @access  Public
+ */
+router.get('/session-status', studentController.getSessionStatus);
+
+/**
+ * Friend endpoints
+ */
+router.post('/friends/request', studentController.sendFriendRequest);
+router.post('/friends/accept', studentController.acceptFriendRequest);
+router.get('/friends/requests', studentController.getFriendRequests);
+router.get('/friends', studentController.getFriends);
+
 module.exports = router;
