@@ -51,11 +51,13 @@ export default function Dashboard() {
           <ul className="friends-grid">
             {friends.map(fr => (
               <li key={fr.id} className="friend-tile">
-                <div className="friend-avatar">{(fr.name || 'U').charAt(0)}</div>
-                <div>
-                  <div className="friend-name">{fr.name}</div>
-                  <div className="small">{fr.userid}</div>
-                </div>
+                <Link to={`/friend-profile/${fr.userid}`} className="friend-link">
+                  <div className="friend-avatar">{(fr.name || 'U').charAt(0)}</div>
+                  <div>
+                    <div className="friend-name">{fr.name}</div>
+                    <div className="small">{fr.userid}</div>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>
