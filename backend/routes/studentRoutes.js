@@ -1,7 +1,15 @@
+
 const express = require('express');
 const studentController = require('../controllers/studentController');
 
 const router = express.Router();
+
+/**
+ * @route   GET /friend-profile/:userid
+ * @desc    View public profile of a friend by userid
+ * @access  Private
+ */
+router.get('/friend-profile/:userid', studentController.getFriendProfile);
 
 /**
  * @route   GET /profile

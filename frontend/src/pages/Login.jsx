@@ -14,7 +14,8 @@ export default function Login() {
     e.preventDefault()
     setMessage(null)
     try {
-      const res = await api.post('/api/auth/login', form)
+      // ensure credentials are included on this request
+      const res = await api.post('/api/auth/login', form, { withCredentials: true })
       setMessage(res.data.message)
       // session cookie stored automatically; go to dashboard
       navigate('/dashboard')

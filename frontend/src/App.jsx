@@ -9,6 +9,7 @@ import UpdateProfile from './pages/UpdateProfile'
 import ChangePassword from './pages/ChangePassword'
 import AddFriend from './pages/AddFriend'
 import AcceptFriend from './pages/AcceptFriend'
+import FriendProfile from './pages/FriendProfile'
 import Logout from './pages/Logout'
 import ForgotPassword from './pages/ForgotPassword'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -48,6 +49,10 @@ export default function App() {
           <Route
             path="/accept-friend"
             element={<ProtectedRoute><AcceptFriend /></ProtectedRoute>}
+          />
+          <Route
+            path="/friend-profile/:userid"
+            element={<ProtectedRoute><FriendProfile /></ProtectedRoute>}
           />
           <Route path="/logout" element={<Logout />} />
           </Routes>
