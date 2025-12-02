@@ -62,4 +62,27 @@ router.post('/friends/accept', studentController.acceptFriendRequest);
 router.get('/friends/requests', studentController.getFriendRequests);
 router.get('/friends', studentController.getFriends);
 
+/**
+ * Library endpoints
+ */
+const upload = require('../config/multer');
+
+// Upload file
+router.post('/library/upload', upload.single('file'), studentController.uploadFile);
+
+// Get all library files
+router.get('/library', studentController.getLibrary);
+
+// Get my uploads
+router.get('/library/my-uploads', studentController.getMyUploads);
+
+// Download file
+router.get('/library/:fileId/download', studentController.downloadFile);
+
+// Share file with friend
+router.post('/library/share', studentController.shareFileWithFriend);
+
+// Get files shared with me
+router.get('/library/shared-with-me', studentController.getSharedWithMe);
+
 module.exports = router;

@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const pool = require('./config/db');
+const { connectMongoDB } = require('./config/mongodb');
 const Student = require('./models/Student');
 const dbStatus = require('./utils/dbStatus');
 const authRoutes = require('./routes/auth');
@@ -133,14 +134,32 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`
+
+// Initialize databases then start server
+async function startServer() {
+  try {
+    // Connect to MongoDB Atlas
+    await connectMongoDB();
+    console.log('✅ MongoDB Atlas connected and ready');
+
+    // Start Express server
+    app.listen(PORT, () => {
+      console.log(`
 ╔═══════════════════════════════════════╗
 ║  User Backend Server                  ║
 ║  Running on PORT: ${PORT}              ║
 ║  URL: http://localhost:${PORT}        ║
+║  PostgreSQL: Connected                ║
+║  MongoDB Atlas: Connected (GridFS)    ║
 ╚═══════════════════════════════════════╝
-  `);
-});
+      `);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = app;

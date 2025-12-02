@@ -362,6 +362,183 @@ const getFriendProfile = [
 ];
 
 /* -------------------------------------------------------------------------- */
+/*                     LIBRARY CONTROLLERS (MongoDB + GridFS)                 */
+/* -------------------------------------------------------------------------- */
+
+const uploadFile = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const userId = req.session.user.id;
+      const user = req.session.user;
+      
+      // Get file buffer from multer memory storage
+      const fileBuffer = req.file.buffer;
+      const fileMetadata = {
+        filename: `${Date.now()}-${req.file.originalname}`,
+        originalName: req.file.originalname,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size
+      };
+
+      // Upload to MongoDB GridFS
+      const uploadedFile = await Student.uploadFile(
+        userId,
+        user.userid,
+        fileBuffer,
+        fileMetadata
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'File uploaded successfully to MongoDB GridFS',
+        data: uploadedFile,
+      });
+    } catch (err) {
+      console.error('Upload File error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Failed to upload file',
+      });
+    }
+  },
+];
+
+const getLibrary = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const files = await Student.getAllFiles();
+      return res.status(200).json({ success: true, data: files });
+    } catch (err) {
+      console.error('Get Library error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Failed to get library files',
+      });
+    }
+  },
+];
+
+const getMyUploads = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const userId = req.session.user.id;
+      const files = await Student.getMyUploads(userId);
+      return res.status(200).json({ success: true, data: files });
+    } catch (err) {
+      console.error('Get My Uploads error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Failed to get uploads',
+      });
+    }
+  },
+];
+
+const downloadFile = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      const file = await Student.getFileById(fileId);
+
+      if (!file) {
+        return res.status(404).json({ success: false, message: 'File not found' });
+      }
+
+      const { downloadFromGridFS } = require('../config/mongodb');
+
+      // Set headers for download
+      res.setHeader('Content-Type', file.fileType);
+      res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+
+      // Stream file from GridFS
+      const downloadStream = downloadFromGridFS(file.gridFsFileId);
+      
+      downloadStream.on('error', (err) => {
+        console.error('GridFS download stream error:', err);
+        if (!res.headersSent) {
+          return res.status(500).json({ success: false, message: 'Failed to stream file' });
+        }
+      });
+
+      downloadStream.pipe(res);
+    } catch (err) {
+      console.error('Download File error:', err);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: err.message || 'Failed to download file',
+        });
+      }
+    }
+  },
+];
+
+const shareFileWithFriend = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const { fileId, targetUserId } = req.body;
+      const currentUser = req.session.user;
+
+      if (!fileId || !targetUserId) {
+        return res.status(400).json({
+          success: false,
+          message: 'fileId and targetUserId are required',
+        });
+      }
+
+      // Validate targetUserId format (PostgreSQL userid)
+      if (!/^[0-9]{4,6}$/.test(String(targetUserId))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid targetUserId format',
+        });
+      }
+
+      // Share file using PostgreSQL userids
+      const share = await Student.shareFile(fileId, currentUser.userid, String(targetUserId));
+
+      return res.status(200).json({
+        success: true,
+        message: 'File shared successfully',
+        data: share,
+      });
+    } catch (err) {
+      console.error('Share File error:', err);
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Failed to share file',
+      });
+    }
+  },
+];
+
+const getSharedWithMe = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const currentUser = req.session.user;
+      const files = await Student.getSharedWithMe(currentUser.userid);
+      return res.status(200).json({ success: true, data: files });
+    } catch (err) {
+      console.error('Get Shared With Me error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Failed to get shared files',
+      });
+    }
+  },
+];
+
+/* -------------------------------------------------------------------------- */
 /*                                   EXPORTS                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -378,4 +555,11 @@ module.exports = {
   getFriendRequests,
   getFriends,
   getFriendProfile,
+  // Library exports
+  uploadFile,
+  getLibrary,
+  getMyUploads,
+  downloadFile,
+  shareFileWithFriend,
+  getSharedWithMe,
 };

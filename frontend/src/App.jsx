@@ -10,6 +10,7 @@ import ChangePassword from './pages/ChangePassword'
 import AddFriend from './pages/AddFriend'
 import AcceptFriend from './pages/AcceptFriend'
 import FriendProfile from './pages/FriendProfile'
+import Library from './pages/Library'
 import Logout from './pages/Logout'
 import ForgotPassword from './pages/ForgotPassword'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -53,6 +54,10 @@ export default function App() {
           <Route
             path="/friend-profile/:userid"
             element={<ProtectedRoute><FriendProfile /></ProtectedRoute>}
+          />
+          <Route
+            path="/library"
+            element={<ProtectedRoute><Library /></ProtectedRoute>}
           />
           <Route path="/logout" element={<Logout />} />
           </Routes>

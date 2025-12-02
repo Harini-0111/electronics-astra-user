@@ -47,6 +47,30 @@ class Student {
             UNIQUE (student_id, friend_student_id)
           )
         `);
+
+        // Create library tables
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS library (
+            id SERIAL PRIMARY KEY,
+            owner_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+            filename VARCHAR(255) NOT NULL,
+            original_name VARCHAR(255) NOT NULL,
+            file_type VARCHAR(100),
+            file_path VARCHAR(500) NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS library_shares (
+            id SERIAL PRIMARY KEY,
+            file_id INTEGER REFERENCES library(id) ON DELETE CASCADE,
+            shared_by_user_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+            shared_with_user_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+            shared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        console.log('✓ Library tables created/verified');
       } catch (err) {
         // If ALTER fails, log but continue
         console.warn('Warning: could not ensure userid column exists:', err && err.message ? err.message : err);
@@ -356,6 +380,207 @@ class Student {
     } catch (err) {
       throw err;
     }
+  }
+
+  // ============ LIBRARY METHODS (MongoDB + GridFS) ============
+
+  /**
+   * Upload file to MongoDB GridFS
+   * @param {number} ownerPostgresId - PostgreSQL student.id
+   * @param {string} ownerUserid - PostgreSQL student.userid
+   * @param {Buffer} fileBuffer - File buffer
+   * @param {Object} fileMetadata - { filename, originalName, fileType, fileSize }
+   * @returns {Promise<Object>} - Created file metadata document
+   */
+  static async uploadFile(ownerPostgresId, ownerUserid, fileBuffer, fileMetadata) {
+    const { getDB, uploadToGridFS } = require('../config/mongodb');
+    const db = getDB();
+    
+    // Upload file to GridFS
+    const gridFsFileId = await uploadToGridFS(fileBuffer, {
+      filename: fileMetadata.filename,
+      originalName: fileMetadata.originalName,
+      fileType: fileMetadata.fileType,
+      ownerPostgresId,
+      ownerUserid
+    });
+
+    // Save metadata to libraryFiles collection
+    const fileDoc = {
+      ownerPostgresId,
+      ownerUserid,
+      gridFsFileId: gridFsFileId.toString(),
+      filename: fileMetadata.filename,
+      originalName: fileMetadata.originalName,
+      fileType: fileMetadata.fileType,
+      fileSize: fileMetadata.fileSize,
+      uploadedAt: new Date()
+    };
+
+    const result = await db.collection('libraryFiles').insertOne(fileDoc);
+    return { ...fileDoc, _id: result.insertedId };
+  }
+
+  /**
+   * Get all library files from MongoDB
+   * @returns {Promise<Array>} - All files with owner info from PostgreSQL
+   */
+  static async getAllFiles() {
+    const { getDB } = require('../config/mongodb');
+    const db = getDB();
+    
+    // Get all files from MongoDB
+    const files = await db.collection('libraryFiles')
+      .find({})
+      .sort({ uploadedAt: -1 })
+      .toArray();
+
+    // Enrich with PostgreSQL owner info
+    const enrichedFiles = await Promise.all(
+      files.map(async (file) => {
+        const ownerQuery = 'SELECT name, userid FROM students WHERE id = $1';
+        const ownerResult = await pool.query(ownerQuery, [file.ownerPostgresId]);
+        const owner = ownerResult.rows[0] || {};
+        
+        return {
+          ...file,
+          fileId: file._id.toString(),
+          owner_name: owner.name,
+          owner_userid: owner.userid
+        };
+      })
+    );
+
+    return enrichedFiles;
+  }
+
+  /**
+   * Get files uploaded by specific user
+   * @param {number} ownerPostgresId - PostgreSQL student.id
+   * @returns {Promise<Array>} - User's uploaded files
+   */
+  static async getMyUploads(ownerPostgresId) {
+    const { getDB } = require('../config/mongodb');
+    const db = getDB();
+    
+    // Get user's files from MongoDB
+    const files = await db.collection('libraryFiles')
+      .find({ ownerPostgresId })
+      .sort({ uploadedAt: -1 })
+      .toArray();
+
+    // Enrich with PostgreSQL owner info
+    const ownerQuery = 'SELECT name, userid FROM students WHERE id = $1';
+    const ownerResult = await pool.query(ownerQuery, [ownerPostgresId]);
+    const owner = ownerResult.rows[0] || {};
+
+    return files.map(file => ({
+      ...file,
+      fileId: file._id.toString(),
+      owner_name: owner.name,
+      owner_userid: owner.userid
+    }));
+  }
+
+  /**
+   * Get file by MongoDB _id
+   * @param {string} fileId - MongoDB ObjectId string
+   * @returns {Promise<Object>} - File metadata
+   */
+  static async getFileById(fileId) {
+    const { getDB, ObjectId } = require('../config/mongodb');
+    const db = getDB();
+    
+    const file = await db.collection('libraryFiles').findOne({ _id: new ObjectId(fileId) });
+    if (!file) return null;
+
+    return {
+      ...file,
+      fileId: file._id.toString()
+    };
+  }
+
+  /**
+   * Share file with another user
+   * @param {string} fileId - MongoDB file _id
+   * @param {string} sharedByUserId - PostgreSQL userid of sharer
+   * @param {string} sharedWithUserId - PostgreSQL userid of recipient
+   * @returns {Promise<Object>} - Share record
+   */
+  static async shareFile(fileId, sharedByUserId, sharedWithUserId) {
+    const { getDB, ObjectId } = require('../config/mongodb');
+    const db = getDB();
+    
+    // Verify file exists in MongoDB
+    const file = await db.collection('libraryFiles').findOne({ _id: new ObjectId(fileId) });
+    if (!file) throw new Error('File not found');
+
+    // Verify target user exists in PostgreSQL
+    const userCheck = await pool.query('SELECT id FROM students WHERE userid = $1', [sharedWithUserId]);
+    if (userCheck.rows.length === 0) throw new Error('Target user not found');
+
+    // Check if already shared
+    const existingShare = await db.collection('fileShares').findOne({
+      fileId,
+      sharedWithUserId
+    });
+    if (existingShare) throw new Error('File already shared with this user');
+
+    // Create share record in MongoDB
+    const shareDoc = {
+      fileId,
+      sharedByUserId,
+      sharedWithUserId,
+      sharedAt: new Date()
+    };
+
+    const result = await db.collection('fileShares').insertOne(shareDoc);
+    return { ...shareDoc, _id: result.insertedId };
+  }
+
+  /**
+   * Get files shared with a specific user
+   * @param {string} userId - PostgreSQL userid
+   * @returns {Promise<Array>} - Shared files with metadata
+   */
+  static async getSharedWithMe(userId) {
+    const { getDB, ObjectId } = require('../config/mongodb');
+    const db = getDB();
+    
+    // Get share records for this user
+    const shares = await db.collection('fileShares')
+      .find({ sharedWithUserId: userId })
+      .sort({ sharedAt: -1 })
+      .toArray();
+
+    // Get file details and owner info
+    const enrichedShares = await Promise.all(
+      shares.map(async (share) => {
+        const file = await db.collection('libraryFiles').findOne({ _id: new ObjectId(share.fileId) });
+        if (!file) return null;
+
+        // Get owner info from PostgreSQL
+        const ownerQuery = 'SELECT name, userid FROM students WHERE id = $1';
+        const ownerResult = await pool.query(ownerQuery, [file.ownerPostgresId]);
+        const owner = ownerResult.rows[0] || {};
+
+        // Get sharer info from PostgreSQL
+        const sharerQuery = 'SELECT name FROM students WHERE userid = $1';
+        const sharerResult = await pool.query(sharerQuery, [share.sharedByUserId]);
+        const sharer = sharerResult.rows[0] || {};
+
+        return {
+          ...file,
+          fileId: file._id.toString(),
+          owner_name: owner.name,
+          owner_userid: owner.userid,
+          shared_by_name: sharer.name,
+          shared_at: share.sharedAt
+        };
+      })
+    );
+
+    return enrichedShares.filter(item => item !== null);
   }
 }
 
