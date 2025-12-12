@@ -66,6 +66,7 @@ router.get('/friends', studentController.getFriends);
  * Library endpoints
  */
 const upload = require('../config/multer');
+const resourceUpload = require('../config/resourceMulter');
 
 // Upload file
 router.post('/library/upload', upload.single('file'), studentController.uploadFile);
@@ -78,11 +79,19 @@ router.get('/library/my-uploads', studentController.getMyUploads);
 
 // Download file
 router.get('/library/:fileId/download', studentController.downloadFile);
+router.delete('/library/:fileId', studentController.deleteLibraryFile);
 
 // Share file with friend
 router.post('/library/share', studentController.shareFileWithFriend);
 
 // Get files shared with me
 router.get('/library/shared-with-me', studentController.getSharedWithMe);
+
+/**
+ * Resources endpoints (PDF/JPG/PNG, 10MB)
+ */
+router.post('/resources/upload', resourceUpload.single('file'), studentController.uploadResource);
+router.get('/resources', studentController.getResources);
+router.get('/resources/:fileId/download', studentController.downloadResource);
 
 module.exports = router;

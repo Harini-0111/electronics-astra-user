@@ -454,9 +454,9 @@ const downloadFile = [
 
       const { downloadFromGridFS } = require('../config/mongodb');
 
-      // Set headers for download
+      const inline = req.query.preview === '1';
       res.setHeader('Content-Type', file.fileType);
-      res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+      res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${file.originalName}"`);
 
       // Stream file from GridFS
       const downloadStream = downloadFromGridFS(file.gridFsFileId);
@@ -476,6 +476,102 @@ const downloadFile = [
           success: false,
           message: err.message || 'Failed to download file',
         });
+      }
+    }
+  },
+];
+
+const deleteLibraryFile = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      const ownerPostgresId = req.session.user.id;
+      const result = await Student.deleteLibraryFile(fileId, ownerPostgresId);
+      return res.status(200).json({ success: true, message: 'File deleted', data: result });
+    } catch (err) {
+      console.error('Delete File error:', err);
+      const status = err.message === 'Not authorized to delete this file' ? 403 : 400;
+      return res.status(status).json({ success: false, message: err.message || 'Failed to delete file' });
+    }
+  },
+];
+
+/* -------------------------------------------------------------------------- */
+/*                         RESOURCES (PDF/JPG/PNG)                            */
+/* -------------------------------------------------------------------------- */
+
+const uploadResource = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const { mimetype, size, originalname } = req.file;
+      const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowed.includes(mimetype)) {
+        return res.status(400).json({ success: false, message: 'Only PDF, JPG, JPEG, PNG are allowed' });
+      }
+      if (size > 10 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: 'File exceeds 10MB limit' });
+      }
+
+      const user = req.session.user;
+      const buffer = req.file.buffer;
+      const meta = {
+        filename: `${Date.now()}-${originalname}`,
+        originalName: originalname,
+        fileType: mimetype,
+        fileSize: size,
+      };
+
+      const uploaded = await Student.uploadResourceFile(user.id, user.userid, buffer, meta);
+
+      return res.status(200).json({ success: true, message: 'Resource uploaded', data: uploaded });
+    } catch (err) {
+      console.error('Upload Resource error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to upload resource' });
+    }
+  },
+];
+
+const getResources = [
+  requireLogin,
+  async (_req, res) => {
+    try {
+      const files = await Student.getAllResourceFiles();
+      return res.status(200).json({ success: true, data: files });
+    } catch (err) {
+      console.error('Get Resources error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to fetch resources' });
+    }
+  },
+];
+
+const downloadResource = [
+  requireLogin,
+  async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      const file = await Student.getResourceFileById(fileId);
+      if (!file) return res.status(404).json({ success: false, message: 'File not found' });
+
+      const { downloadFromGridFS } = require('../config/mongodb');
+      res.setHeader('Content-Type', file.fileType);
+      res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+
+      const stream = downloadFromGridFS(file.gridFsFileId);
+      stream.on('error', (err) => {
+        console.error('Resource download stream error:', err);
+        if (!res.headersSent) res.status(500).json({ success: false, message: 'Failed to stream file' });
+      });
+      stream.pipe(res);
+    } catch (err) {
+      console.error('Download Resource error:', err);
+      if (!res.headersSent) {
+        return res.status(500).json({ success: false, message: err.message || 'Failed to download resource' });
       }
     }
   },
@@ -560,6 +656,11 @@ module.exports = {
   getLibrary,
   getMyUploads,
   downloadFile,
+  deleteLibraryFile,
   shareFileWithFriend,
   getSharedWithMe,
+  // Resources exports
+  uploadResource,
+  getResources,
+  downloadResource,
 };

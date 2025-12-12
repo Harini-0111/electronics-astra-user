@@ -30,9 +30,9 @@ export default function Library() {
       setFilteredFiles(
         files.filter(
           (f) =>
-            f.original_name.toLowerCase().includes(query) ||
-            f.owner_name.toLowerCase().includes(query) ||
-            f.file_type.toLowerCase().includes(query)
+            (f.originalName || f.original_name || '').toLowerCase().includes(query) ||
+            (f.owner_name || '').toLowerCase().includes(query) ||
+            (f.fileType || f.file_type || '').toLowerCase().includes(query)
         )
       )
     }
@@ -105,6 +105,25 @@ export default function Library() {
       window.URL.revokeObjectURL(url)
     } catch (err) {
       setMessage(err.response?.data?.message || err.message || 'Download failed')
+    }
+  }
+
+  const handlePreview = (fileUrl) => {
+    try {
+      const url = `${api.defaults.baseURL}${fileUrl}?preview=1`
+      window.open(url, '_blank', 'noopener')
+    } catch (err) {
+      setMessage('Failed to preview file')
+    }
+  }
+
+  const handleDelete = async (fileId) => {
+    try {
+      await api.delete(`/library/${fileId}`)
+      setMessage('File deleted')
+      loadFiles()
+    } catch (err) {
+      setMessage(err.response?.data?.message || err.message || 'Delete failed')
     }
   }
 
@@ -225,18 +244,18 @@ export default function Library() {
         ) : (
           <div className="files-grid">
             {filteredFiles.map((file) => (
-              <div key={file.id} className="file-card">
-                <div className="file-icon">{getFileIcon(file.file_type)}</div>
+              <div key={file.fileId || file.id} className="file-card">
+                <div className="file-icon">{getFileIcon(file.fileType || file.file_type || '')}</div>
                 <div className="file-info">
-                  <div className="file-name" title={file.original_name}>
-                    {file.original_name}
+                  <div className="file-name" title={file.originalName || file.original_name}>
+                    {file.originalName || file.original_name}
                   </div>
                   <div className="file-meta">
                     <span className="file-owner">
                       By: {file.owner_name} ({file.owner_userid})
                     </span>
                     <span className="file-date">
-                      {new Date(file.uploaded_at).toLocaleDateString()}
+                      {new Date(file.uploadedAt || file.uploaded_at).toLocaleDateString()}
                     </span>
                   </div>
                   {filter === 'shared' && file.shared_by_name && (
@@ -248,18 +267,36 @@ export default function Library() {
                 <div className="file-actions">
                   <button
                     className="btn-download"
-                    onClick={() => handleDownload(file.id, file.original_name)}
+                    onClick={() => handleDownload(file.fileId || file.id, file.originalName || file.original_name)}
                     title="Download"
                   >
                     ⬇ Download
                   </button>
+                  {file.fileUrl && (
+                    <button
+                      className="btn-share"
+                      onClick={() => handlePreview(file.fileUrl)}
+                      title="Preview"
+                    >
+                      👁️ Preview
+                    </button>
+                  )}
                   <button
                     className="btn-share"
-                    onClick={() => openSharePopup(file.id, file.original_name)}
+                    onClick={() => openSharePopup(file.fileId || file.id, file.originalName || file.original_name)}
                     title="Share with friend"
                   >
                     📤 Share
                   </button>
+                  {filter === 'my-uploads' && (
+                    <button
+                      className="btn-share"
+                      onClick={() => handleDelete(file.fileId || file.id)}
+                      title="Delete"
+                    >
+                      🗑️ Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
