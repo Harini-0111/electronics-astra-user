@@ -384,6 +384,81 @@ class Student {
 
   // ============ LIBRARY METHODS (MongoDB + GridFS) ============
 
+  // ============ RESOURCES (MongoDB + GridFS, PDF/JPG/PNG) ============
+
+  /**
+   * Upload resource file to GridFS and metadata to MongoDB
+   * @param {number} ownerPostgresId
+   * @param {string} ownerUserid
+   * @param {Buffer} fileBuffer
+   * @param {{filename:string, originalName:string, fileType:string, fileSize:number}} fileMetadata
+   */
+  static async uploadResourceFile(ownerPostgresId, ownerUserid, fileBuffer, fileMetadata) {
+    const { getDB, uploadToGridFS } = require('../config/mongodb');
+    const db = getDB();
+
+    const gridFsFileId = await uploadToGridFS(fileBuffer, {
+      filename: fileMetadata.filename,
+      originalName: fileMetadata.originalName,
+      fileType: fileMetadata.fileType,
+      ownerPostgresId,
+      ownerUserid,
+      tag: 'resource'
+    });
+
+    const doc = {
+      ownerPostgresId,
+      ownerUserid,
+      gridFsFileId: gridFsFileId.toString(),
+      filename: fileMetadata.filename,
+      originalName: fileMetadata.originalName,
+      fileType: fileMetadata.fileType,
+      fileSize: fileMetadata.fileSize,
+      uploadedAt: new Date(),
+    };
+
+    const result = await db.collection('resourcesFiles').insertOne(doc);
+    return { ...doc, _id: result.insertedId };
+  }
+
+  /**
+   * List all resources newest first, enriched with uploader info
+   */
+  static async getAllResourceFiles() {
+    const { getDB } = require('../config/mongodb');
+    const db = getDB();
+
+    const files = await db.collection('resourcesFiles')
+      .find({})
+      .sort({ uploadedAt: -1 })
+      .toArray();
+
+    const enriched = await Promise.all(files.map(async (file) => {
+      const ownerQuery = 'SELECT name, userid FROM students WHERE id = $1';
+      const ownerRes = await pool.query(ownerQuery, [file.ownerPostgresId]);
+      const owner = ownerRes.rows[0] || {};
+
+      return {
+        ...file,
+        fileId: file._id.toString(),
+        owner_name: owner.name,
+        owner_userid: owner.userid,
+      };
+    }));
+
+    return enriched;
+  }
+
+  /**
+   * Get single resource metadata by id
+   */
+  static async getResourceFileById(fileId) {
+    const { getDB, ObjectId } = require('../config/mongodb');
+    const db = getDB();
+    const file = await db.collection('resourcesFiles').findOne({ _id: new ObjectId(fileId) });
+    return file ? { ...file, fileId: file._id.toString() } : null;
+  }
+
   /**
    * Upload file to MongoDB GridFS
    * @param {number} ownerPostgresId - PostgreSQL student.id
@@ -441,10 +516,12 @@ class Student {
         const ownerQuery = 'SELECT name, userid FROM students WHERE id = $1';
         const ownerResult = await pool.query(ownerQuery, [file.ownerPostgresId]);
         const owner = ownerResult.rows[0] || {};
-        
+
+        const fileId = file._id.toString();
         return {
           ...file,
-          fileId: file._id.toString(),
+          fileId,
+          fileUrl: `/library/${fileId}/download`,
           owner_name: owner.name,
           owner_userid: owner.userid
         };
@@ -474,12 +551,16 @@ class Student {
     const ownerResult = await pool.query(ownerQuery, [ownerPostgresId]);
     const owner = ownerResult.rows[0] || {};
 
-    return files.map(file => ({
-      ...file,
-      fileId: file._id.toString(),
-      owner_name: owner.name,
-      owner_userid: owner.userid
-    }));
+    return files.map(file => {
+      const fileId = file._id.toString();
+      return {
+        ...file,
+        fileId,
+        fileUrl: `/library/${fileId}/download`,
+        owner_name: owner.name,
+        owner_userid: owner.userid
+      };
+    });
   }
 
   /**
@@ -496,8 +577,25 @@ class Student {
 
     return {
       ...file,
-      fileId: file._id.toString()
+      fileId: file._id.toString(),
+      fileUrl: `/library/${file._id.toString()}/download`
     };
+  }
+
+  /**
+   * Delete library file (metadata + GridFS) if owner matches
+   */
+  static async deleteLibraryFile(fileId, ownerPostgresId) {
+    const { getDB, ObjectId, deleteFromGridFS } = require('../config/mongodb');
+    const db = getDB();
+
+    const file = await db.collection('libraryFiles').findOne({ _id: new ObjectId(fileId) });
+    if (!file) throw new Error('File not found');
+    if (file.ownerPostgresId !== ownerPostgresId) throw new Error('Not authorized to delete this file');
+
+    await deleteFromGridFS(file.gridFsFileId);
+    await db.collection('libraryFiles').deleteOne({ _id: new ObjectId(fileId) });
+    return { deleted: true, fileId };
   }
 
   /**
