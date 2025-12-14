@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f7fbff;
+  --surface: rgba(255, 255, 255, 0.8);
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --stroke: rgba(12, 16, 33, 0.08);
+  --text: #0f172a;
+  --muted: #475569;
+  --primary: #7c3aed;
+  --primary-2: #2563eb;
+  --accent: #3ddbf0;
+  --radius: 16px;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0c1021;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.12);
+  --stroke: rgba(255, 255, 255, 0.08);
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --primary: #8b5cf6;
+  --primary-2: #2563eb;
+  --accent: #3ddbf0;
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-[var(--bg)] text-[var(--text)] font-sans antialiased min-h-screen;
+  background-image: radial-gradient(circle at 20% 20%, rgba(124,58,237,0.12), transparent 32%),
+    radial-gradient(circle at 80% 0%, rgba(37,99,235,0.12), transparent 28%),
+    radial-gradient(circle at 50% 70%, rgba(61,219,240,0.12), transparent 30%);
+}
+
+@layer components {
+  .glass {
+    @apply bg-[var(--surface)] border border-[var(--stroke)] rounded-2xl shadow-glass backdrop-blur-glass;
+  }
+
+  .neu {
+    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.35), -6px -6px 14px rgba(255, 255, 255, 0.06);
+  }
+
+  .button-primary {
+    @apply px-4 py-2 rounded-xl font-semibold text-white transition-all duration-200;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.35);
+  }
+
+  .button-ghost {
+    @apply px-4 py-2 rounded-xl font-semibold text-[var(--text)] border border-[var(--stroke)] bg-[var(--surface)];
+  }
+
+  .input {
+    @apply w-full rounded-xl bg-[var(--surface)] border border-[var(--stroke)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+  }
+
+  .card-grid {
+    @apply grid gap-4 xl:grid-cols-3 lg:grid-cols-2;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold text-[var(--text)];
+  }
+}
